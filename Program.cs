@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
 
 #region Builder
@@ -30,7 +31,9 @@ builder.Services.AddAuthentication(option => {
 }).AddJwtBearer(option => {
     option.TokenValidationParameters = new TokenValidationParameters {
         ValidateLifetime = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings)),
+        ValidateIssuer = false,
+        ValidateAudience = false
     };
 });
 
@@ -47,7 +50,32 @@ builder.Services.AddScoped<IAdministradorServico, AdministradorServico>();
 builder.Services.AddScoped<IVeiculoServico, VeiculoServico>();
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options => {
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Cole Seu Token"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+
+            new string [] {}
+        }
+    });
+});
+
 
 
 var app = builder.Build();
@@ -59,7 +87,7 @@ app.MapGet("/", () => {
 
     var home = new Home();
     return Results.Content(home.Html, "text/html; charset=utf-8");
-}).WithTags("Home");
+}).AllowAnonymous().WithTags("Home");
 #endregion
 
 #region Administradores
@@ -71,7 +99,7 @@ string GerarTokenJwt(Administrador administrador) {
     var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
     var claims = new List<Claim>() {
-        new Claim("Email", administrador.Email ),
+        new Claim("Email'", administrador.Email ),
         new Claim("Perfil", administrador.Perfil ),
     };
 
@@ -94,10 +122,10 @@ app.MapPost("/administradores/login", ([FromBody] LoginDTO loginDto, IAdministra
             Perfil = adm.Perfil,
             Token = token
         });
-    }    
+    }
     else
         return Results.Unauthorized();
-}).WithTags("Administrador");
+}).AllowAnonymous().WithTags("Administrador");
 
 app.MapPost("/administradores", ([FromBody] AdministradorDTO administradorDTO, IAdministradorServico administradorServico) => {
     var validacao = new ErrosDeValidacao();
