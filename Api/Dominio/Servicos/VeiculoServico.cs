@@ -1,0 +1,60 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using api_crud_veiculos_dotnet.Dominio.Entidades;
+using api_crud_veiculos_dotnet.Dominio.Interfaces;
+using api_crud_veiculos_dotnet.Infraestrutura.Db;
+
+namespace api_crud_veiculos_dotnet.Dominio.Servicos {
+    public class VeiculoServico : IVeiculoServico {
+
+        private readonly DbContexto _contexto;
+
+        public VeiculoServico(DbContexto contexto) {
+            _contexto = contexto;
+        }
+
+        public void Apagar(Veiculo veiculo) {
+            _contexto.Veiculos.Remove(veiculo);
+            _contexto.SaveChanges();
+
+        }
+
+        public void Atualizar(Veiculo veiculo) {
+            _contexto.Veiculos.Update(veiculo);
+            _contexto.SaveChanges();
+        }
+
+        public Veiculo? BuscaPorId(int id) {
+            return _contexto.Veiculos.Where(v => v.Id == id).FirstOrDefault();
+        }
+
+        public void Incluir(Veiculo veiculo) {
+            _contexto.Veiculos.Add(veiculo);
+            _contexto.SaveChanges();
+        }
+
+        public List<Veiculo> Todos(int? pagina, string? nome = null, string? marca = null) {
+            var query = _contexto.Veiculos.AsQueryable();
+
+            if (!string.IsNullOrEmpty(nome)) {
+                query = query.Where(v => v.Nome.ToLower().Contains(nome));
+            }
+
+            if (!string.IsNullOrEmpty(marca)) {
+                query = query.Where(v => v.Nome.ToLower().Contains(marca));
+            }
+
+            int itensPorPagina = 10;
+
+            if (pagina != null) {
+
+                query = query.Skip(((int) pagina - 1) * itensPorPagina).Take(itensPorPagina);
+            }
+
+
+            return query.ToList();
+        }
+    }
+}
